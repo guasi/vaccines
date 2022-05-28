@@ -1,0 +1,11 @@
+.table.dataTable tbody tr td i {
+	color: var(--bs-light)!important;
+}
+
+.table.dataTable tbody tr td i:hover {
+	color: var(--bs-info)!important;
+}
+
+div.dataTables_wrapper div.dataTables_filter {
+  margin-bottom: 1rem!important;
+}
