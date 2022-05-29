@@ -56,20 +56,27 @@ shinyServer(function(input, output, session) {
   })
   
   # VISUALIZE -----------------------------------------------------
-  output$tbl_glimpse <- renderPrint({
+  output$tbl_my_summary <- renderPrint({
+    get_summary <- function(var) { 
+      if(is.factor(NISPUF14[[var]])) {
+        df <- NISPUF14 %>% 
+          group_by(.data[[var]]) %>% 
+          summarise(n = n()) %>% 
+          mutate(prop = n/sum(n)) 
+      } else {
+        df <- summary(NISPUF14[[var]])
+      }
+      return(df)
+    }
+    
     list_of_vars <- r$picked_dt$key
-    
-    #get_summary <- function(var) {  
-    #  NISPUF14 %>% 
-    #    group_by(.data[[var]]) %>% 
-    #    summarise(n = n()) %>% 
-    #    mutate(`%` = round(n/sum(n)*100,4))
-    #}
-    #lapply(list_of_vars,get_summary)
-    
+    sapply(list_of_vars,get_summary)
+  })
+  
+  output$tbl_summary <- renderPrint({
+    list_of_vars <- r$picked_dt$key
     df <- select(NISPUF14, list_of_vars)
     summary(df)
-    
   })
   
   # ACTION BUTTONS -----------------------------------------------

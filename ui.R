@@ -19,8 +19,15 @@ navbarPage("Vaccines 2014", id="tabs",
     )
   ),
   tabPanel("Glimpse", value = "tab2",
-          h3("Summary Glimpse"),
-          verbatimTextOutput("tbl_glimpse")),
+    fluidRow(
+      column(6,
+             h3("summary()"),
+             verbatimTextOutput("tbl_summary")),
+      column(6,
+             h3("get_summary()"),
+             verbatimTextOutput("tbl_my_summary"))
+    )
+  ),
   tabPanel("Group", value = "tab3",
            h3("Grouped associations"),
            verbatimTextOutput("tbl_group")),
