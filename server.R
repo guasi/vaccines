@@ -1,92 +1,67 @@
 shinyServer(function(input, output, session) {
 
   r <- reactiveValues(
-    notpicked_dt = NISPUF14_VARS,
-    picked_dt = data.frame()
+    picked_keys = NULL
   )
   
-  # NOTPICKED -----------------------------------------------------
-  output$tbl_notpicked <- renderDT({
-    dt <- r$notpicked_dt %>% 
-      mutate(`>` = "<button class='btn-sm btn-primary'><i class='fa fa-arrow-right'></i></button>")
+  # EXPLORE -----------------------------------------------------
+  output$tbl_vars <- renderDT({
+    input$bt_clear
     
-    datatable(dt,
+    datatable(NISPUF14_VARS,
               style = "auto",
               rownames = F,
-              selection = "none",
-              escape = F,
-              options = list(searching = T, paging = F, scrollY = "500")) %>% 
-      formatStyle(3, cursor = "pointer")
-  })
-  observeEvent(input$tbl_notpicked_cell_clicked, {
-    info <- input$tbl_notpicked_cell_clicked
-    if(length(info) != 0) {
-      if(info$col == 2){
-        r$picked_dt <- rbind(r$picked_dt, r$notpicked_dt[info$row,])
-        r$notpicked_dt <- r$notpicked_dt[-info$row,]
-      }
-    }
+              selection = list(mode = "multiple"),
+              options = list(searching = T, paging = F, scrollY = "500"))
   })
   
-  # PICKED --------------------------------------------------------
-  output$tbl_picked <- renderDT({
-    if(length(r$picked_dt) == 0) {
-      dt <- r$picked_dt
-    } else {
-      dt <- r$picked_dt %>% 
-        mutate(`<` = "<button class='btn-sm btn-primary'><i class='fa fa-arrow-left'></i></button>") %>% 
-        select(`<`,key,description)
-    }
-    
-    datatable(dt,
-              style = "auto",
-              rownames = F,
-              selection = "none",
-              escape = F,
-              options = list(searching = F, paging = F, scrollY = "500"))
-  })
-  observeEvent(input$tbl_picked_cell_clicked, {
-    info <- input$tbl_picked_cell_clicked
-    if(length(info) != 0) {
-      if(info$col == 0) {
-        r$notpicked_dt <- rbind(r$notpicked_dt, r$picked_dt[info$row,])
-        r$picked_dt <- r$picked_dt[-info$row,]
-      }
-    }
+  observeEvent(input$tbl_vars_rows_selected, {
+    row_selected <- input$tbl_vars_rows_selected
+    r$picked_keys <- NISPUF14_VARS$key[row_selected]
   })
   
-  # VISUALIZE -----------------------------------------------------
   output$tbl_my_summary <- renderPrint({
-    get_summary <- function(var) { 
-      if(is.factor(NISPUF14[[var]])) {
-        df <- NISPUF14 %>% 
-          group_by(.data[[var]]) %>% 
-          summarise(n = n()) %>% 
-          mutate(prop = n/sum(n)) 
-      } else {
-        df <- summary(NISPUF14[[var]])
-      }
-      return(df)
-    }
+    if(!is.null(r$picked_keys)) {
     
-    list_of_vars <- r$picked_dt$key
-    sapply(list_of_vars,get_summary)
+      get_summary <- function(vect) {
+        if(n_distinct(vect, na.rm = T) == 1) {  # if only one value
+          return(summary(vect))
+        } else if(!is.factor(vect)) { # if is not a vector make into one
+          vect <- cut(vect, unique(quantile(vect, na.rm = T)))
+        }
+        dat <- fct_count(vect)
+        dat$`%` <- round(100*dat$n/sum(dat$n),3)
+        return(as.data.frame(dat))
+      }
+    
+      df <- select(NISPUF14,r$picked_keys)
+      lapply(df, get_summary)
+    }
   })
   
-  output$tbl_summary <- renderPrint({
-    list_of_vars <- r$picked_dt$key
-    df <- select(NISPUF14, list_of_vars)
-    summary(df)
-  })
-  
-  # ACTION BUTTONS -----------------------------------------------
   observeEvent(input$bt_clear, {
-    r$notpicked_dt <-  NISPUF14_VARS
-    r$picked_dt <-  data.frame()
+    r$picked_keys <-  NULL
   })
   
-  observeEvent(input$bt_apply, {
-    updateTabsetPanel(session, "tabs", selected = "tab2")
+  observeEvent(input$bt_visualize, {
+    if(is.null(r$picked_keys) | length(r$picked_keys) == 0) {
+      showModal(modalDialog(NULL,size = "s", footer = NULL, easyClose = TRUE,
+        "Pick at least one indicator"
+      ))
+    } else {
+      updateTabsetPanel(session, "tabs", selected = "visualize")
+    }
+  })
+  
+  # VISUALIZE ---------------------------------------------------------
+  
+  # make a filter for factors in picked_keys
+  output$factor_filters <- renderUI({
+    df_factors <- NISPUF14 %>% 
+      select(r$picked_keys) %>% 
+      select(where(is.factor))
+    lbls <- NISPUF14_VARS[names(df_factors),"description"]
+    selectInput("s_group","group by", choices = lbls, multiple = F, selectize = F)
   })
 
 })

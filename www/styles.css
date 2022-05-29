@@ -1,11 +1,12 @@
-.table.dataTable tbody tr td i {
-	color: var(--bs-light)!important;
-}
-
-.table.dataTable tbody tr td i:hover {
-	color: var(--bs-info)!important;
+.table.dataTable tbody td.active, .table.dataTable tbody tr.active td {
+	background-color: var(--bs-primary)!important;
 }
 
 div.dataTables_wrapper div.dataTables_filter {
   margin-bottom: 1rem!important;
+}
+
+#tbl_my_summary {
+  height: 500px;
+  overflow-y: scroll;
 }
