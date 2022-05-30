@@ -22,10 +22,15 @@ navbarPage("Vaccines 2014", id="tabs",
   tabPanel("Visualize selected", value = "visualize",
     fluidRow(
       sidebarPanel(
-        uiOutput("factor_filters")
+        selectInput("s_group", "Group by", multiple = F, selectize = F, choices = NULL),
+        h4("Filter"),
+        tags$div(id = 'dynamic_selects'),
+        actionButton("bt_filter", "filter", class = "btn-sm")
       ),
       mainPanel(
-        p("here goes the filtered stuff")
+        h4("Plot"),
+        plotOutput("plot_main"),
+        tableOutput("table_main")
       )
     )
   ),
