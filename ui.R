@@ -1,36 +1,43 @@
-navbarPage("Vaccines 2014", id="tabs",
+navbarPage("Vaccines 2014", id="navbar",
   tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "styles.css")),
   theme = td_theme,
   collapsible = T,
   
-  tabPanel("Explore", value="explore",
+  tabPanel("Explore Raw Data",
     fluidRow(
-      column(6,
+      column(5,
              h3(class = "text-primary", "Indicators"),
+             actionButton("bt_clear","reset", class = "btn btn-sm", style="float:right", icon = icon("trash")),
              p("Indicators without data (all NAs) have been dropped"),
              hr(),
-             DTOutput("tbl_vars")),
-      column(6,
-             h3(class = "text-primary", "Summary of selected Indicators"),
-             p("Raw unweigted summary of selected indicator"),
+             DTOutput("table_vars")),
+      column(7,
+             h3(class = "text-primary", "Quick view of selected Indicators"),
+             actionButton("bt_examine","examine selected", class = "btn btn-sm", style="float:right", icon = icon("eye")),
+             p("Raw unweigted summary of selected indicators"),
              hr(),
-             actionButton("bt_clear","reset", class = "btn btn-sm mb-2", icon = icon("trash")),
-             actionButton("bt_visualize", "visualize selected", class = "btn btn-sm mb-2", icon = icon("chart-bar")),
-             verbatimTextOutput("tbl_my_summary"))
+             tabsetPanel(
+               tabPanel("Summaries", icon = icon("info"), 
+                        verbatimTextOutput("text_summary")),
+               tabPanel("Grouped Table", icon = icon("table"), 
+                        DTOutput("table_grouped")),
+               tabPanel("Grouped Plot*", icon = icon("chart-bar"), 
+                        plotOutput("plot_grouped"),
+                        p(class = "text-danger", "* Plotting only ",strong("up to first four"),"factor variables"))
+             ))
     )
   ),
-  tabPanel("Visualize selected", value = "visualize",
-    fluidRow(
+  tabPanel("Examine Selected", value = "tab_examine",
+    sidebarLayout(
       sidebarPanel(
-        selectInput("s_group", "Group by", multiple = F, selectize = F, choices = NULL),
-        h4("Filter"),
-        tags$div(id = 'dynamic_selects'),
-        actionButton("bt_filter", "filter", class = "btn-sm")
+        h5("X-AXIS"),
+        selectInput("s_xaxis", NULL, choices = NULL, multiple = F, selectize = F),
+        h5("FILTER"),
+        tags$div(id = "div_filters"),
+        actionButton("bt_apply", "apply", class = "btn btn-sm")
       ),
       mainPanel(
-        h4("Plot"),
-        plotOutput("plot_main"),
-        tableOutput("table_main")
+        h3("plot goes here")
       )
     )
   ),

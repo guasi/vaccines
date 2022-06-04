@@ -3,10 +3,11 @@
 }
 
 div.dataTables_wrapper div.dataTables_filter {
-  margin-bottom: 1rem!important;
+  margin-bottom: .5rem!important;
+  margin-left: -100px!important;
 }
 
-#tbl_my_summary {
+#text_summary {
   height: 500px;
   overflow-y: scroll;
 }
