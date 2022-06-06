@@ -8,7 +8,7 @@ navbarPage("Vaccines 2014", id="navbar",
       column(5,
              h3(class = "text-primary", "Indicators"),
              actionButton("bt_clear","reset", class = "btn btn-sm", style="float:right", icon = icon("trash")),
-             p("Indicators without data (all NAs) have been dropped"),
+             p("Indicators without data not included"),
              hr(),
              DTOutput("table_vars")),
       column(7,
@@ -30,14 +30,15 @@ navbarPage("Vaccines 2014", id="navbar",
   tabPanel("Examine Selected", value = "tab_examine",
     sidebarLayout(
       sidebarPanel(
-        h5("X-AXIS"),
-        selectInput("s_xaxis", NULL, choices = NULL, multiple = F, selectize = F),
-        h5("FILTER"),
+        h5(class = "text-primary", "Plot elements"),
+        selectInput("s_xaxis", "x-axis", choices = NULL, multiple = F, selectize = F),
+        selectInput("s_measures","measure", choices = NULL, multiple = F, selectize = F),
+        h5(class = "text-primary", "Filters"),
         tags$div(id = "div_filters"),
-        actionButton("bt_apply", "apply", class = "btn btn-sm")
+        actionButton("bt_apply", "apply filters", class = "btn btn-sm")
       ),
       mainPanel(
-        h3("plot goes here")
+        plotOutput("plot_examine")
       )
     )
   ),

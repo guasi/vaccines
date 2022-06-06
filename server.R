@@ -1,7 +1,9 @@
 shinyServer(function(input, output, session) {
   
+  # GLOBAL & REACTIVE VARS -----------------------------------
+  inserted_vars = NULL
+  
   r <- reactiveValues(
-    inserted_vars = NULL,
     picked_vars = NULL,
     picked_df = NULL
   )
@@ -23,19 +25,26 @@ shinyServer(function(input, output, session) {
   })
   
   observeEvent(input$bt_clear, {
-    r$picked_vars <-  NULL
+    for(var in inserted_vars) {
+      removeUI(selector = paste0("#s_",var))
+    }
+    updateSelectInput(session, "s_xaxis", choices = character(0))
+    updateSelectInput(session, "s_measures", choices = character(0))
+    r$picked_vars <- NULL
+    r$picked_df <- NULL
+    inserted_vars <<- NULL
   })
   
   # QUICK SUMMARY ------------------------------------------------
   output$text_summary <- renderPrint({
-    if (length(r$picked_vars) != 0) {
+    if (length(r$picked_vars) > 0) {
       
-      get_summary <- function(vect) {
-        if (!is.factor(vect)) {  
-          quants <- unique(quantile(vect, na.rm = T))
-          vect <- if (length(quants) > 1) cut(vect, quants) else factor(vect)
+      get_summary <- function(vec) {
+        if (!is.factor(vec)) {  
+          quants <- unique(quantile(vec, na.rm = T))
+          vec <- if (length(quants) > 1) cut(vec, quants) else factor(vec)
         }
-        dat <- fct_count(vect)
+        dat <- fct_count(vec)
         dat$`%` <- round(100*dat$n/sum(dat$n), 3)
         return(as.data.frame(dat))
       }
@@ -46,15 +55,16 @@ shinyServer(function(input, output, session) {
   
   # GROUPED TABLE ------------------------------------------------
   output$table_grouped <- renderDT({
-    if (length(r$picked_vars) != 0) {
+    if (length(r$picked_vars) > 0) {
       
-      dt <- r$picked_df %>% 
+      dat <- r$picked_df %>% 
         group_by_if(is.factor) %>% 
         summarise(
           freq = n(), 
-          across(where(is.numeric), ~ mean(.x, na.rm = TRUE)))
+          across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
+          .groups = "drop")
       
-      datatable(dt,
+      datatable(dat,
                 style = "auto",
                 rownames = F,
                 selection = "none",
@@ -64,15 +74,15 @@ shinyServer(function(input, output, session) {
   
   # GROUPED PLOT ------------------------------------------------
   output$plot_grouped <- renderPlot({
-    if(length(r$picked_vars) != 0) {
+    if(length(r$picked_vars) > 0) {
       
-      df <- select(r$picked_df, where(is.factor))
-      nm <- colnames(df)
-      n <- ncol(df)
+      dat <- select(r$picked_df, where(is.factor))
+      nm <- colnames(dat)
+      n <- ncol(dat)
       
       if(n > 0) {
-        colnames(df) <- paste0("c",1:n)
-        if (n >= 1) {p <- ggplot(df, aes(c1)) + geom_bar() + labs(x = nm[1])} 
+        colnames(dat) <- paste0("c",1:n)
+        if (n >= 1) {p <- ggplot(dat, aes(c1)) + geom_bar() + labs(x = nm[1])} 
         if (n >= 2) {p <- p + geom_bar(aes(fill = c2)) + labs(fill = nm[2])}
         if (n >= 3) {p <- p + facet_grid(c3 ~ .)}
         if (n >= 4) {p <- p + facet_grid(c3 ~ c4)}
@@ -85,47 +95,65 @@ shinyServer(function(input, output, session) {
   # EXAMINE ---------------------------------------------------
   observeEvent(input$table_vars_row_last_clicked, {
     updateSelectInput(session, "s_xaxis", choices = r$picked_vars)
+    updateSelectInput(session, "s_measures", choices = r$picked_vars)
     n_picked <- length(r$picked_vars)
-    n_inserted <- length(r$inserted_vars)
+    n_inserted <- length(inserted_vars)
 
     if (n_inserted == 0) {
       var <- r$picked_vars
     } else { 
-      var <- union(setdiff(r$picked_vars, r$inserted_vars), 
-                   setdiff(r$inserted_vars, r$picked_vars))
+      var <- union(setdiff(r$picked_vars, inserted_vars), 
+                   setdiff(inserted_vars, r$picked_vars))
     }
     
     if (n_picked > n_inserted) {
-      id <- paste0("e_", var)
-      lbl <- tolower(NISPUF14_VARS$description[NISPUF14_VARS$key == var])
-      vec <- NISPUF14[[var]]
+      lbl <- paste0(var,": ",tolower(NISPUF14_VARS$lbl[NISPUF14_VARS$key == var]))
+      vec <- r$picked_df[[var]]
       if (is.factor(vec)) {
-        elem <- selectInput(id, lbl, choices = levels(vec), multiple = T, selectize = F)
+        elem <- selectInput(var, lbl, choices = levels(vec), multiple = T, selectize = F)
       } else if (is.numeric(vec)) {
-        elem <- sliderInput(id, lbl, round = 1, 
+        elem <- sliderInput(var, lbl, round = 1, 
                             min =  min(vec, na.rm = T), 
                             max = max(vec, na.rm = T), 
-                            value = mean(vec, na.rm = T))
+                            value = range(vec, na.rm = T))
       }
       insertUI(
         selector = "#div_filters",
-        ui = span(id = var, elem)
+        ui = span(id = paste0("s_",var), elem)
       )
-      r$inserted_vars <- c(r$inserted_vars, var)
+      inserted_vars <<- c(inserted_vars, var)
     } else {
-      removeUI(
-        selector = paste0("#",var)
-      )
-      r$inserted_vars <- r$inserted_vars[r$inserted_vars != var]
+      removeUI(selector = paste0("#s_",var))
+      inserted_vars <<- inserted_vars[inserted_vars != var]
     }
   })
   
   observeEvent(input$bt_examine, {
     if (is.null(r$picked_vars) || length(r$picked_vars) == 0) {
-      showModal(modalDialog(title = NULL, footer = NULL, easyClose = T,
-                            "Pick at least one indicator"))
+      showModal(modalDialog(title = NULL, footer = NULL, easyClose = T, TXT_PICKONE))
     } else {
       updateNavbarPage(session, "navbar", selected = "tab_examine") 
+    }
+  })
+  
+  output$plot_examine <- renderPlot({
+    if (length(r$picked_df) > 0) {
+      r$picked_df %>% 
+      ggplot(aes(x = .data[[input$s_xaxis]])) +
+        geom_bar(aes(fill = .data[[input$s_measures]]),
+                 position = "fill")
+    }
+  })
+  
+  observeEvent(input$bt_apply, {
+    filter_vars <- r$picked_vars[sapply(r$picked_vars, \(x) !is.null(input[[x]]))]
+    
+    if (length(filter_vars) > 0) {
+      r$picked_df <- NISPUF14 %>%
+        select(r$picked_vars) %>% 
+        filter((if_all(
+            .cols = all_of(filter_vars),
+            .fns  = ~ .x %in% input[[cur_column()]])))
     }
   })
 })
