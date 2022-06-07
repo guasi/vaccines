@@ -5,13 +5,13 @@ shinyServer(function(input, output, session) {
   
   r <- reactiveValues(
     picked_vars = NULL,
-    picked_df = NULL
+    picked_df = NULL,
+    redraw = NULL
   )
   
-  # VARS TABLE ------------------------------------------------
+  # SELECT TABLE -----------------------------------------------
   output$table_vars <- renderDT({
-    input$bt_clear
-    
+    r$redraw
     datatable(NISPUF14_VARS,
               style = "auto",
               rownames = F,
@@ -25,14 +25,18 @@ shinyServer(function(input, output, session) {
   })
   
   observeEvent(input$bt_clear, {
-    for(var in inserted_vars) {
-      removeUI(selector = paste0("#s_",var))
+    if (length(r$picked_vars) > 0) {
+      
+      for(var in inserted_vars) {
+        removeUI(selector = paste0("#s_",var))
+      }
+      updateSelectInput(session, "s_xaxis", choices = character(0))
+      updateSelectInput(session, "s_measures", choices = character(0))
+      r$picked_vars <- NULL
+      r$picked_df <- NULL
+      inserted_vars <<- NULL
+      r$redraw <- input$bt_clear
     }
-    updateSelectInput(session, "s_xaxis", choices = character(0))
-    updateSelectInput(session, "s_measures", choices = character(0))
-    r$picked_vars <- NULL
-    r$picked_df <- NULL
-    inserted_vars <<- NULL
   })
   
   # QUICK SUMMARY ------------------------------------------------
@@ -59,10 +63,9 @@ shinyServer(function(input, output, session) {
       
       dat <- r$picked_df %>% 
         group_by_if(is.factor) %>% 
-        summarise(
-          freq = n(), 
-          across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
-          .groups = "drop")
+        summarise(freq = n(), 
+                  across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
+                  .groups = "drop")
       
       datatable(dat,
                 style = "auto",
@@ -94,11 +97,13 @@ shinyServer(function(input, output, session) {
   
   # EXAMINE ---------------------------------------------------
   observeEvent(input$table_vars_row_last_clicked, {
-    updateSelectInput(session, "s_xaxis", choices = r$picked_vars)
-    updateSelectInput(session, "s_measures", choices = r$picked_vars)
     n_picked <- length(r$picked_vars)
     n_inserted <- length(inserted_vars)
 
+    updateSelectInput(session, "s_xaxis", choices = r$picked_vars)
+    if (n_picked > 1) updateSelectInput(session, "s_measures", choices = r$picked_vars,
+                                        selected = r$picked_vars[2])
+    
     if (n_inserted == 0) {
       var <- r$picked_vars
     } else { 
@@ -110,7 +115,7 @@ shinyServer(function(input, output, session) {
       lbl <- paste0(var,": ",tolower(NISPUF14_VARS$lbl[NISPUF14_VARS$key == var]))
       vec <- r$picked_df[[var]]
       if (is.factor(vec)) {
-        elem <- selectInput(var, lbl, choices = levels(vec), multiple = T, selectize = F)
+        elem <- selectInput(var, lbl, choices = levels(vec), multiple = T, selectize = T)
       } else if (is.numeric(vec)) {
         elem <- sliderInput(var, lbl, round = 1, 
                             min =  min(vec, na.rm = T), 
@@ -129,20 +134,32 @@ shinyServer(function(input, output, session) {
   })
   
   observeEvent(input$bt_examine, {
-    if (is.null(r$picked_vars) || length(r$picked_vars) == 0) {
-      showModal(modalDialog(title = NULL, footer = NULL, easyClose = T, TXT_PICKONE))
-    } else {
+    if (length(r$picked_vars) > 0) {
       updateNavbarPage(session, "navbar", selected = "tab_examine") 
     }
   })
   
   output$plot_examine <- renderPlot({
-    if (length(r$picked_df) > 0) {
-      r$picked_df %>% 
-      ggplot(aes(x = .data[[input$s_xaxis]])) +
-        geom_bar(aes(fill = .data[[input$s_measures]]),
-                 position = "fill")
+    n <- length(r$picked_df)
+    if (n > 0) {
+      
+      m1 <- input$s_xaxis
+      m2 <- input$s_measures
+      dat <- r$picked_df
+      p <- dat %>% ggplot(aes(x = .data[[m1]]))
+      
+      if (is.factor(dat[[m1]])) {
+        if (n == 1) {p <- p + geom_bar()}
+        if (n >= 2) {p <- p + geom_bar(aes(fill = .data[[m2]]), position = input$plot_pos)}
+      } else if (is.numeric(dat[[m1]])) {
+        if (n == 1) {p <- p + geom_density()} 
+        if (n >= 2 && input$plot_type == "jitter") {p <- p + geom_jitter(aes(y = .data[[m2]]))}
+        if (n >= 2 && input$plot_type == "density") {p <- p + geom_density(aes(fill = .data[[m2]], color = .data[[m2]]), alpha = 1/4)}
+      }
+      p + guides(x = guide_axis(angle = 25)) +
+        theme(legend.position = "bottom")
     }
+    
   })
   
   observeEvent(input$bt_apply, {

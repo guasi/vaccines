@@ -7,10 +7,10 @@ load("data/NISPUF14.RData")
 
 # remove columns with all NAs and PROVWT_D, RDDWT_D, STRATUM
 NISPUF14 <- NISPUF14[ , colSums(is.na(NISPUF14)) < nrow(NISPUF14)] 
-NISPUF14[2:6] <- list(NULL) 
+NISPUF14[2:6] <- NULL 
 
 # make a separate data frame for labels
-NISPUF14_VARS <- data.frame(key = names(NISPUF14), lbl = sapply(NISPUF14,attr,"label"))
+NISPUF14_VARS <- data.frame(key = names(NISPUF14), lbl = sapply(NISPUF14, attr, "label"))
 
 # THEMES -------------------------------------------
 td_theme <- bslib::bs_theme(version = 5,
@@ -19,11 +19,16 @@ td_theme <- bslib::bs_theme(version = 5,
                             "input-font-size" = ".75rem",
                             "table-cell-padding-y" = ".2rem")
 
-# ALERTS -------------------------------------------
-click_to_select_alert <- "<div class='alert alert-dismissible alert-warning'>
-    <button type='button' class='btn-close' data-bs-dismiss = 'alert'></button>
-    <strong>Click</strong> on the >> or the << to add or delete idicators you want to visualize.
-  </div>"
-
 # TEXT----------------------------------------------
-TEXT_PICKONE <- "Pick at least one indicator"
+TXT_PICKONE <- "Pick at least one indicator."
+
+TXT_NOTICE <- list(
+  p("This application allows you to explore", 
+    strong("raw unweigthed"), 
+    "vaccination data from the",
+    a("2014 Child National Immunization Survey", href="https://www.cdc.gov/nchs/nis/data_files.htm")), 
+  p("It provides a", 
+    strong("rough overview"), 
+    "to help analysts select indicators for further analysis elsewhere."),
+  p("To select an idicator, click on its row on the table on the left.")
+)

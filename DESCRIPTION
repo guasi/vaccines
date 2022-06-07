@@ -1,0 +1,8 @@
+Title: Immunization Survey Raw Data Explorer
+Author: Ingrid Lagos
+AuthorUrl: http://ilagos.rstudio.io/
+License: GPL-3
+DisplayMode: normal
+Description: A tool to explore raw vaccine survey data
+Tags: getting-started, vaccines
+Type: Shiny

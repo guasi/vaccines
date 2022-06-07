@@ -3,52 +3,57 @@ navbarPage("Vaccines 2014", id="navbar",
   theme = td_theme,
   collapsible = T,
   
+  
   tabPanel("Explore Raw Data",
+    modalDialog(title = "Explore Raw Data", 
+                footer = modalButton("close", icon = icon("times")), 
+                easyClose = T, 
+                div(TXT_NOTICE)),
     fluidRow(
       column(5,
-        h3(class = "text-primary", "Indicators"),
-        actionButton("bt_clear","reset", class = "btn btn-sm", style="float:right", icon = icon("trash")),
-        p("Indicators without data not included"),
-        hr(),
-        DTOutput("table_vars")),
+             h3(class = "text-primary", "Indicators"),
+             actionButton("bt_clear","reset", class = "btn btn-sm", style="float:right", icon = icon("trash")),
+             p("Indicators without data not included"),
+             hr(),
+             DTOutput("table_vars")),
       column(7,
-        h3(class = "text-primary", "Quick view of selected Indicators"),
-        actionButton("bt_examine","examine selected", class = "btn btn-sm", style="float:right", icon = icon("eye")),
-        p("Raw unweigted summary of selected indicators"),
-        hr(),
-        tabsetPanel(
-         tabPanel("Summaries", icon = icon("info"), 
-                  verbatimTextOutput("text_summary")),
-         tabPanel("Grouped Table", icon = icon("table"), 
-                  DTOutput("table_grouped")),
-         tabPanel("Grouped Plot*", icon = icon("chart-bar"), 
-                  plotOutput("plot_grouped"),
-                  p(class = "text-danger", "* Plotting only ",strong("up to first four"),"factor variables"))
-        ))
+             h3(class = "text-primary", "Quick view of selected indicators"),
+             actionButton("bt_examine","examine selected", class = "btn btn-sm", style="float:right", icon = icon("eye")),
+             p("Raw unweigted summary of selected indicators"),
+             hr(),
+             tabsetPanel(
+               tabPanel("Summaries", icon = icon("info"), 
+                        verbatimTextOutput("text_summary")),
+               tabPanel("Grouped Table", icon = icon("table"), 
+                        DTOutput("table_grouped")),
+               tabPanel("Grouped Plot*", icon = icon("chart-bar"), 
+                        plotOutput("plot_grouped"),
+                        p(class = "text-danger", "* Plotting only ",strong("up to first four"),"factor variables"))
+             ))
     )
   ),
   tabPanel("Examine Selected", value = "tab_examine",
-    fluidRow(
-      column(4,
-        div(class = "card mb-3",
-          div(class = "card-header", "Plot elements"),
-          div(class = "card-body",
-            selectInput("s_xaxis", "x-axis", choices = NULL, multiple = F, selectize = F),
-            selectInput("s_measures","measure", choices = NULL, multiple = F, selectize = F))
-        ),
-        div(class = "card",
-          div(class = "card-header", "Filters"),
-          div(class = "card-body", 
-            div(id = "div_filters"),
-            actionButton("bt_apply", "apply filters", class = "btn btn-sm"))
-        )
+    fluidRow(class = "px-3",
+      column(2, class = "well",
+        p(strong(class = "text-primary", icon("chart-bar"), "Plot elements")),
+        selectInput("s_xaxis", "x-axis", choices = NULL, selected = NULL, multiple = F, selectize = T),
+        selectInput("s_measures","measure", choices = NULL, selected = NULL, multiple = F, selectize = T),
+        radioButtons("plot_pos","Bar plot style", inline = T,
+                     choices = c("stack","fill"), selected = "stack"),
+        radioButtons("plot_type","Plot type (numerical only)", inline = T,
+                     choices = c("density","jitter"), selected = "density")
       ),
-      column(8,
+      column(7,
         plotOutput("plot_examine")
+      ),
+      column(3, class = "well",
+        p(strong(class = "text-primary", icon("filter"), "Filters")),
+        div(id = "div_filters"),
+        actionButton("bt_apply", "apply filters", class = "btn btn-primary")
       )
     )
   ),
-  tabPanel("About"),
+  tabPanel("About", includeMarkdown("include/about.md")),
   bslib::nav_spacer(),
   bslib::nav_item(tags$a(icon("github", class="fa-lg"), href = "https://github.com/guasi/vaccines")),
   tags$footer(includeHTML("www/footer.html"))
