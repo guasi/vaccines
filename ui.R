@@ -4,7 +4,7 @@ navbarPage("Vaccines 2014", id="navbar",
   collapsible = T,
   
   
-  tabPanel("Explore Raw Data",
+  tabPanel("Select Indicators",
     modalDialog(title = "Explore Raw Data", 
                 footer = modalButton("close", icon = icon("times")), 
                 easyClose = T, 
@@ -39,7 +39,7 @@ navbarPage("Vaccines 2014", id="navbar",
         selectInput("s_xaxis", "x-axis", choices = NULL, selected = NULL, multiple = F, selectize = T),
         selectInput("s_measures","measure", choices = NULL, selected = NULL, multiple = F, selectize = T),
         radioButtons("plot_pos","Bar plot style", inline = T,
-                     choices = c("stack","fill"), selected = "stack"),
+                     choices = c("stack","fill","dodge"), selected = "stack"),
         radioButtons("plot_type","Plot type (numerical only)", inline = T,
                      choices = c("density","jitter"), selected = "density")
       ),
@@ -53,7 +53,7 @@ navbarPage("Vaccines 2014", id="navbar",
       )
     )
   ),
-  tabPanel("About", includeMarkdown("include/about.md")),
+  tabPanel("About", style="max-width:700px;margin: 0 auto", includeMarkdown("include/about.md")),
   bslib::nav_spacer(),
   bslib::nav_item(tags$a(icon("github", class="fa-lg"), href = "https://github.com/guasi/vaccines")),
   tags$footer(includeHTML("www/footer.html"))

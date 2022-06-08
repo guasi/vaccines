@@ -1,7 +1,6 @@
 shinyServer(function(input, output, session) {
   
   # GLOBAL & REACTIVE VARS -----------------------------------
-  inserted_vars = NULL
   
   r <- reactiveValues(
     picked_vars = NULL,
@@ -27,14 +26,13 @@ shinyServer(function(input, output, session) {
   observeEvent(input$bt_clear, {
     if (length(r$picked_vars) > 0) {
       
-      for(var in inserted_vars) {
+      for(var in r$picked_vars) {
         removeUI(selector = paste0("#s_",var))
       }
       updateSelectInput(session, "s_xaxis", choices = character(0))
       updateSelectInput(session, "s_measures", choices = character(0))
       r$picked_vars <- NULL
       r$picked_df <- NULL
-      inserted_vars <<- NULL
       r$redraw <- input$bt_clear
     }
   })
@@ -48,12 +46,13 @@ shinyServer(function(input, output, session) {
           quants <- unique(quantile(vec, na.rm = T))
           vec <- if (length(quants) > 1) cut(vec, quants) else factor(vec)
         }
-        dat <- fct_count(vec)
+        dat <- forcats::fct_count(vec)
         dat$`%` <- round(100*dat$n/sum(dat$n), 3)
         return(as.data.frame(dat))
       }
       
       lapply(r$picked_df, get_summary)
+      
     }
   })
   
@@ -62,8 +61,9 @@ shinyServer(function(input, output, session) {
     if (length(r$picked_vars) > 0) {
       
       dat <- r$picked_df %>% 
-        group_by_if(is.factor) %>% 
-        summarise(freq = n(), 
+        group_by_if(is.factor) %>%
+        summarise(Freq = n(),
+                  Prop = round(Freq/nrow(r$picked_df),2),
                   across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
                   .groups = "drop")
       
@@ -97,21 +97,15 @@ shinyServer(function(input, output, session) {
   
   # EXAMINE ---------------------------------------------------
   observeEvent(input$table_vars_row_last_clicked, {
-    n_picked <- length(r$picked_vars)
-    n_inserted <- length(inserted_vars)
-
+    var <- NISPUF14_VARS$key[input$table_vars_row_last_clicked]
+    
+    # update plot inputs
+    m <- if(length(r$picked_vars) > 1) r$picked_vars[2] else r$picked_vars[1]
     updateSelectInput(session, "s_xaxis", choices = r$picked_vars)
-    if (n_picked > 1) updateSelectInput(session, "s_measures", choices = r$picked_vars,
-                                        selected = r$picked_vars[2])
+    updateSelectInput(session, "s_measures", choices = r$picked_vars, selected = m)
     
-    if (n_inserted == 0) {
-      var <- r$picked_vars
-    } else { 
-      var <- union(setdiff(r$picked_vars, inserted_vars), 
-                   setdiff(inserted_vars, r$picked_vars))
-    }
-    
-    if (n_picked > n_inserted) {
+    # update filter inputs; add/remove last clicked
+    if (var %in% r$picked_vars) {
       lbl <- paste0(var,": ",tolower(NISPUF14_VARS$lbl[NISPUF14_VARS$key == var]))
       vec <- r$picked_df[[var]]
       if (is.factor(vec)) {
@@ -122,14 +116,10 @@ shinyServer(function(input, output, session) {
                             max = max(vec, na.rm = T), 
                             value = range(vec, na.rm = T))
       }
-      insertUI(
-        selector = "#div_filters",
-        ui = span(id = paste0("s_",var), elem)
-      )
-      inserted_vars <<- c(inserted_vars, var)
+      insertUI(selector = "#div_filters", 
+               ui = span(id = paste0("s_",var), elem))
     } else {
       removeUI(selector = paste0("#s_",var))
-      inserted_vars <<- inserted_vars[inserted_vars != var]
     }
   })
   
