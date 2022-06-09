@@ -53,7 +53,7 @@ navbarPage("Vaccines 2014", id="navbar",
         div(id = "div_filters"),
         actionButton("bt_fapply", "apply filters", class = "btn btn-primary btn-sm"),
         actionButton("bt_fclear", "clear filters", class = "btn btn-warning btn-sm"),
-        br(),br(),
+        br(),br(),br(),
         p(tags$small(class = "text-muted", "* filters apply to all selected"))
       )
     )
