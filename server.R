@@ -169,14 +169,12 @@ shinyServer(function(input, output, session) {
       p <- dat %>% ggplot(aes(x = .data[[m1]]))
       
       if (is.factor(dat[[m1]])) {
-        if (n == 1) {
-          p <- p + geom_bar() + 
-          scale_x_discrete(labels = \(x) stringr::str_wrap(x, width = 20))
-        }
+        if (n == 1) {p <- p + geom_bar()}
         if (n >= 2) {
           if (is.factor(dat[[m2]])) {p <- p + geom_bar(aes(fill = .data[[m2]]), position = input$plot_pos)}
           else if (is.numeric(dat[[m2]])) {p <- p + geom_boxplot(aes(y = .data[[m2]]))}
         }
+        p <- p + scale_x_discrete(labels = \(x) stringr::str_wrap(x, width = 20))
       } else if (is.numeric(dat[[m1]])) {
         if (n == 1)  {p <- p + geom_density()} # cannot be jitter
         if (n >= 2 && input$plot_type == "jitter") {p <- p + geom_jitter(aes(y = .data[[m2]]))}
