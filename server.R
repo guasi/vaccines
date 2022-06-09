@@ -29,8 +29,8 @@ shinyServer(function(input, output, session) {
       for(var in r$picked_vars) {
         removeUI(selector = paste0("#s_",var))
       }
-      updateSelectInput(session, "s_xaxis", choices = character(0))
-      updateSelectInput(session, "s_measures", choices = character(0))
+      updateSelectInput(session, "plot_x", choices = character(0))
+      updateSelectInput(session, "plot_y", choices = character(0))
       r$picked_vars <- NULL
       r$picked_df <- NULL
       r$redraw <- input$bt_clear
@@ -95,14 +95,14 @@ shinyServer(function(input, output, session) {
   
   })
   
-  # EXAMINE ---------------------------------------------------
+  # EXAMINE filters ---------------------------------------------------
   observeEvent(input$table_vars_row_last_clicked, {
     var <- NISPUF14_VARS$key[input$table_vars_row_last_clicked]
     
     # update plot inputs
     m <- if(length(r$picked_vars) > 1) r$picked_vars[2] else r$picked_vars[1]
-    updateSelectInput(session, "s_xaxis", choices = r$picked_vars)
-    updateSelectInput(session, "s_measures", choices = r$picked_vars, selected = m)
+    updateSelectInput(session, "plot_x", choices = r$picked_vars)
+    updateSelectInput(session, "plot_y", choices = r$picked_vars, selected = m)
     
     # update filter inputs; add/remove last clicked
     if (var %in% r$picked_vars) {
@@ -129,38 +129,89 @@ shinyServer(function(input, output, session) {
     }
   })
   
-  output$plot_examine <- renderPlot({
-    n <- length(r$picked_df)
-    if (n > 0) {
-      
-      m1 <- input$s_xaxis
-      m2 <- input$s_measures
-      dat <- r$picked_df
-      p <- dat %>% ggplot(aes(x = .data[[m1]]))
-      
-      if (is.factor(dat[[m1]])) {
-        if (n == 1) {p <- p + geom_bar()}
-        if (n >= 2) {p <- p + geom_bar(aes(fill = .data[[m2]]), position = input$plot_pos)}
-      } else if (is.numeric(dat[[m1]])) {
-        if (n == 1) {p <- p + geom_density()} 
-        if (n >= 2 && input$plot_type == "jitter") {p <- p + geom_jitter(aes(y = .data[[m2]]))}
-        if (n >= 2 && input$plot_type == "density") {p <- p + geom_density(aes(fill = .data[[m2]], color = .data[[m2]]), alpha = 1/4)}
-      }
-      p + guides(x = guide_axis(angle = 25)) +
-        theme(legend.position = "bottom")
-    }
-    
-  })
-  
-  observeEvent(input$bt_apply, {
-    filter_vars <- r$picked_vars[sapply(r$picked_vars, \(x) !is.null(input[[x]]))]
+  observeEvent(input$bt_fapply, {
+    filter_vars <- r$picked_vars[sapply(r$picked_vars, \(x) (!is.null(input[[x]])))]
     
     if (length(filter_vars) > 0) {
       r$picked_df <- NISPUF14 %>%
         select(r$picked_vars) %>% 
         filter((if_all(
-            .cols = all_of(filter_vars),
-            .fns  = ~ .x %in% input[[cur_column()]])))
+          .cols = all_of(filter_vars),
+          .fns  = ~ if (is.numeric(.x)) {
+                       between(.x, input[[cur_column()]][1], input[[cur_column()]][2])
+                     } else {
+                       .x %in% input[[cur_column()]]
+                     }
+        )))
     }
   })
+  
+  observeEvent(input$bt_fclear, {
+    r$picked_df <- select(NISPUF14, r$picked_vars)
+    
+    for(var in r$picked_vars) {
+      vec <- r$picked_df[[var]]
+      if (is.factor(vec))
+        updateSelectInput(session,var, selected = character(0))
+      else if (is.numeric(vec))
+        updateSliderInput(session,var, value = range(vec, na.rm = T))
+    }
+  })
+  
+  # EXAMINE plot & table ---------------------------------------
+  output$plot_examine <- renderPlot({
+    n <- length(r$picked_df)
+    if (n > 0) {
+      
+      m1 <- input$plot_x
+      m2 <- input$plot_y
+      dat <- r$picked_df
+      p <- dat %>% ggplot(aes(x = .data[[m1]]))
+      
+      if (is.factor(dat[[m1]])) {
+        if (n == 1) {
+          p <- p + geom_bar() + 
+          scale_x_discrete(labels = \(x) stringr::str_wrap(x, width = 20))
+        }
+        if (n >= 2) {
+          if (is.factor(dat[[m2]])) {p <- p + geom_bar(aes(fill = .data[[m2]]), position = input$plot_pos)}
+          else if (is.numeric(dat[[m2]])) {p <- p + geom_boxplot(aes(y = .data[[m2]]))}
+        }
+      } else if (is.numeric(dat[[m1]])) {
+        if (n == 1)  {p <- p + geom_density()} # cannot be jitter
+        if (n >= 2 && input$plot_type == "jitter") {p <- p + geom_jitter(aes(y = .data[[m2]]))}
+        if (n >= 2 && input$plot_type == "density") {p <- p + geom_density(aes(fill = .data[[m2]], color = .data[[m2]]), alpha = 1/4)}
+      }
+      p + theme(legend.position = "bottom")
+    }
+  })
+  
+  output$table_examine <- renderTable({
+    if (length(r$picked_vars) > 0) {
+      
+      factor_all <- function(vec) {
+        if (!is.factor(vec)) {
+          quants <- unique(quantile(vec, na.rm = T))
+          vec <- if (length(quants) > 1) cut(vec, quants) else factor(vec)
+        }
+        return(vec)
+      }
+      
+      m1 = input$plot_x
+      m2 = input$plot_y
+      dat <- r$picked_df %>% select(m1 , m2)
+      dat <- as.data.frame(lapply(dat, factor_all))
+      if (m1 != m2) {
+        dat %>%
+          group_by_all() %>% 
+          summarise(n = n()) %>% 
+          group_by(.data[[m1]]) %>%
+          mutate(p = 100*round(n/sum(n),2),
+                 fp = paste0(n," (",p,"%)")) %>%
+          select(-n, -p) %>% 
+          tidyr::pivot_wider(names_from = .data[[m2]], values_from = fp)
+      }
+    }
+  }, align = "r", striped = T, hover = T, spacing = "s", label = "test")
+  
 })

@@ -36,20 +36,24 @@ navbarPage("Vaccines 2014", id="navbar",
     fluidRow(class = "px-3",
       column(2, class = "well",
         p(strong(class = "text-primary", icon("chart-bar"), "Plot elements")),
-        selectInput("s_xaxis", "x-axis", choices = NULL, selected = NULL, multiple = F, selectize = T),
-        selectInput("s_measures","measure", choices = NULL, selected = NULL, multiple = F, selectize = T),
+        selectInput("plot_x", "x-axis", choices = NULL, selected = NULL, multiple = F, selectize = T),
+        selectInput("plot_y","measure", choices = NULL, selected = NULL, multiple = F, selectize = T),
         radioButtons("plot_pos","Bar plot style", inline = T,
                      choices = c("stack","fill","dodge"), selected = "stack"),
         radioButtons("plot_type","Plot type (numerical only)", inline = T,
                      choices = c("density","jitter"), selected = "density")
       ),
       column(7,
-        plotOutput("plot_examine")
+        plotOutput("plot_examine"),
+        hr(),
+        tableOutput("table_examine")
       ),
       column(3, class = "well",
         p(strong(class = "text-primary", icon("filter"), "Filters")),
         div(id = "div_filters"),
-        actionButton("bt_apply", "apply filters", class = "btn btn-primary")
+        actionButton("bt_fapply", "apply filters", class = "btn btn-primary"),
+        actionButton("bt_fclear", "clear filters", class = "btn btn-warning"),
+        p("filters apply to all selected variables")
       )
     )
   ),
