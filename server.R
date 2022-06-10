@@ -11,7 +11,7 @@ shinyServer(function(input, output, session) {
   # SELECT TABLE -----------------------------------------------
   output$table_vars <- renderDT({
     r$redraw
-    datatable(NISPUF14_VARS,
+    datatable(MDATA_VARS,
               style = "auto",
               rownames = F,
               selection = list(mode = "multiple"),
@@ -19,8 +19,8 @@ shinyServer(function(input, output, session) {
   })
   
   observeEvent(input$table_vars_row_last_clicked, {
-    r$picked_vars <- NISPUF14_VARS$key[input$table_vars_rows_selected]
-    r$picked_df <- select(NISPUF14, r$picked_vars)
+    r$picked_vars <- MDATA_VARS$key[input$table_vars_rows_selected]
+    r$picked_df <- select(MDATA, r$picked_vars)
   })
   
   observeEvent(input$bt_clear, {
@@ -97,7 +97,7 @@ shinyServer(function(input, output, session) {
   
   # EXAMINE filters ---------------------------------------------------
   observeEvent(input$table_vars_row_last_clicked, {
-    var <- NISPUF14_VARS$key[input$table_vars_row_last_clicked]
+    var <- MDATA_VARS$key[input$table_vars_row_last_clicked]
     
     # update plot inputs
     m <- if(length(r$picked_vars) > 1) r$picked_vars[2] else r$picked_vars[1]
@@ -106,7 +106,7 @@ shinyServer(function(input, output, session) {
     
     # update filter inputs; add/remove last clicked
     if (var %in% r$picked_vars) {
-      lbl <- paste0(var,": ",tolower(NISPUF14_VARS$lbl[NISPUF14_VARS$key == var]))
+      lbl <- paste0(var,": ",tolower(MDATA_VARS$lbl[MDATA_VARS$key == var]))
       vec <- r$picked_df[[var]]
       if (is.factor(vec)) {
         elem <- selectInput(var, lbl, choices = levels(vec), multiple = T, selectize = T)
@@ -133,7 +133,7 @@ shinyServer(function(input, output, session) {
     filter_vars <- r$picked_vars[sapply(r$picked_vars, \(x) (!is.null(input[[x]])))]
     
     if (length(filter_vars) > 0) {
-      r$picked_df <- NISPUF14 %>%
+      r$picked_df <- MDATA %>%
         select(r$picked_vars) %>% 
         filter((if_all(
           .cols = all_of(filter_vars),
@@ -147,7 +147,7 @@ shinyServer(function(input, output, session) {
   })
   
   observeEvent(input$bt_fclear, {
-    r$picked_df <- select(NISPUF14, r$picked_vars)
+    r$picked_df <- select(MDATA, r$picked_vars)
     
     for(var in r$picked_vars) {
       vec <- r$picked_df[[var]]

@@ -8,11 +8,13 @@ library(markdown)
 load("data/NISPUF14.RData")
 
 # remove columns with all NAs and PROVWT_D, RDDWT_D, STRATUM
-NISPUF14 <- NISPUF14[ , colSums(is.na(NISPUF14)) < nrow(NISPUF14)] 
-NISPUF14[2:6] <- NULL 
+MDATA <- NISPUF14[ , colSums(is.na(NISPUF14)) < nrow(NISPUF14)] 
+MDATA[2:6] <- NULL 
 
 # make a separate data frame for labels
-NISPUF14_VARS <- data.frame(key = names(NISPUF14), lbl = sapply(NISPUF14, attr, "label"))
+MDATA_VARS <- data.frame(key = names(MDATA), lbl = sapply(MDATA, attr, "label"))
+
+rm(NISPUF14)
 
 # THEMES -------------------------------------------
 td_theme <- bslib::bs_theme(version = 5,
