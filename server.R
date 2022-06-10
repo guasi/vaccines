@@ -47,7 +47,7 @@ shinyServer(function(input, output, session) {
           vec <- if (length(quants) > 1) cut(vec, quants) else factor(vec)
         }
         dat <- forcats::fct_count(vec)
-        dat$`%` <- round(100*dat$n/sum(dat$n), 3)
+        dat$`%` <- round(100*dat$n/sum(dat$n), 2)
         return(as.data.frame(dat))
       }
       
@@ -138,7 +138,7 @@ shinyServer(function(input, output, session) {
         filter((if_all(
           .cols = all_of(filter_vars),
           .fns  = ~ if (is.numeric(.x)) {
-                       between(.x, input[[cur_column()]][1], input[[cur_column()]][2])
+                       .x >= input[[cur_column()]][1] & .x <= input[[cur_column()]][2]
                      } else {
                        .x %in% input[[cur_column()]]
                      }
@@ -166,19 +166,19 @@ shinyServer(function(input, output, session) {
       m1 <- input$plot_x
       m2 <- input$plot_y
       dat <- r$picked_df
-      p <- dat %>% ggplot(aes(x = .data[[m1]]))
+      p <- dat %>% ggplot(aes(x = !!sym(m1)))
       
       if (is.factor(dat[[m1]])) {
         if (n == 1) {p <- p + geom_bar()}
         if (n >= 2) {
-          if (is.factor(dat[[m2]])) {p <- p + geom_bar(aes(fill = .data[[m2]]), position = input$plot_pos)}
-          else if (is.numeric(dat[[m2]])) {p <- p + geom_boxplot(aes(y = .data[[m2]]))}
+          if (is.factor(dat[[m2]])) {p <- p + geom_bar(aes(fill = !!sym(m2)), position = input$plot_pos)}
+          else if (is.numeric(dat[[m2]])) {p <- p + geom_boxplot(aes(y = !!sym(m2)))}
         }
         p <- p + scale_x_discrete(labels = \(x) stringr::str_wrap(x, width = 20))
       } else if (is.numeric(dat[[m1]])) {
         if (n == 1)  {p <- p + geom_density()} # cannot be jitter
-        if (n >= 2 && input$plot_type == "jitter") {p <- p + geom_jitter(aes(y = .data[[m2]]))}
-        if (n >= 2 && input$plot_type == "density") {p <- p + geom_density(aes(fill = .data[[m2]], color = .data[[m2]]), alpha = 1/4)}
+        if (n >= 2 && input$plot_type == "jitter") {p <- p + geom_jitter(aes(y = !!sym(m2)))}
+        if (n >= 2 && input$plot_type == "density") {p <- p + geom_density(aes(fill = !!sym(m2), color = !!sym(m2)), alpha = 1/4)}
       }
       p + theme(legend.position = "bottom")
     }
@@ -187,7 +187,7 @@ shinyServer(function(input, output, session) {
   output$table_examine <- renderTable({
     if (length(r$picked_vars) > 0) {
       
-      factor_all <- function(vec) {
+      make_factor <- function(vec) {
         if (!is.factor(vec)) {
           quants <- unique(quantile(vec, na.rm = T))
           vec <- if (length(quants) > 1) cut(vec, quants) else factor(vec)
@@ -197,19 +197,24 @@ shinyServer(function(input, output, session) {
       
       m1 = input$plot_x
       m2 = input$plot_y
-      dat <- r$picked_df %>% select(m1 , m2)
-      dat <- as.data.frame(lapply(dat, factor_all))
-      if (m1 != m2) {
+      dat <- select(r$picked_df, c(m1, m2))
+      dat <- as.data.frame(lapply(dat, make_factor))
+      if (ncol(dat) == 1) {
+        dat %>% 
+          group_by_all() %>% 
+          summarise(Freq = n(), .groups = "drop") %>% 
+          mutate(`%` = 100*round(Freq/sum(Freq),4))
+      } else {
         dat %>%
           group_by_all() %>% 
-          summarise(n = n()) %>% 
-          group_by(.data[[m1]]) %>%
-          mutate(p = 100*round(n/sum(n),2),
-                 fp = paste0(n," (",p,"%)")) %>%
-          select(-n, -p) %>% 
-          tidyr::pivot_wider(names_from = .data[[m2]], values_from = fp)
+          summarise(Freq = n(), .groups = "drop") %>% 
+          group_by(!!sym(m1)) %>%
+          mutate(`%` = 100*round(Freq/sum(Freq),2),
+                 fp = paste0(Freq," (",`%`,"%)")) %>%
+          select(-Freq, -`%`) %>% 
+          tidyr::pivot_wider(names_from = !!sym(m2), values_from = fp)
       }
     }
-  }, align = "r", striped = T, hover = T, spacing = "s", label = "test")
+  }, align = "r", striped = T, hover = T, spacing = "s")
   
 })

@@ -16,6 +16,12 @@ div.dataTables_wrapper div.dataTables_filter {
   font-size: .75rem!important;
 } 
 
+#table_examine {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
 #table_examine table {
   margin: 0 auto;
+  width: auto;
 }
