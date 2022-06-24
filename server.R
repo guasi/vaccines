@@ -4,107 +4,95 @@ shinyServer(function(input, output, session) {
   
   r <- reactiveValues(
     picked_vars = NULL,
-    picked_df = NULL,
-    redraw = NULL
+    picked_df   = NULL,
+    redraw      = NULL
   )
   
   # SELECT TABLE -----------------------------------------------
   output$table_vars <- renderDT({
     r$redraw
     datatable(MDATA_VARS,
-              style = "auto",
-              rownames = F,
+              style     = "auto",
+              rownames  = F,
               selection = list(mode = "multiple"),
-              options = list(searching = T, paging = F, scrollY = "500"))
-  })
-  
-  observeEvent(input$table_vars_row_last_clicked, {
-    r$picked_vars <- MDATA_VARS$key[input$table_vars_rows_selected]
-    r$picked_df <- select(MDATA, r$picked_vars)
+              options   = list(searching = T, paging = F, scrollY = "500"))
   })
   
   observeEvent(input$bt_clear, {
-    if (length(r$picked_vars) > 0) {
-      
-      for(var in r$picked_vars) {
-        removeUI(selector = paste0("#s_",var))
-      }
-      updateSelectInput(session, "plot_x", choices = character(0))
-      updateSelectInput(session, "plot_y", choices = character(0))
-      r$picked_vars <- NULL
-      r$picked_df <- NULL
-      r$redraw <- input$bt_clear
+    req(r$picked_vars)
+    
+    for(var in r$picked_vars) {
+      removeUI(selector = paste0("#s_",var))
     }
+    updateSelectInput(session, "plot_x", choices = character(0))
+    updateSelectInput(session, "plot_y", choices = character(0))
+    r$picked_vars <- NULL
+    r$picked_df   <- NULL
+    r$redraw      <- input$bt_clear
+    
   })
   
   # QUICK SUMMARY ------------------------------------------------
-  output$text_summary <- renderPrint({
-    if (length(r$picked_vars) > 0) {
-      
-      get_summary <- function(vec) {
-        if (!is.factor(vec)) {  
-          quants <- unique(quantile(vec, na.rm = T))
-          vec <- if (length(quants) > 1) cut(vec, quants) else factor(vec)
-        }
-        dat <- forcats::fct_count(vec)
-        dat$`%` <- round(100*dat$n/sum(dat$n), 2)
-        return(as.data.frame(dat))
-      }
-      
-      lapply(r$picked_df, get_summary)
-      
-    }
-  })
+  output$table_summary <- renderTable({
+    req(r$picked_df)
+    
+    r$picked_df %>% 
+      df_summary() %>% 
+      mutate_all(linebreak_html)
+    
+  }, striped = T, hover = T, spacing = "s", align  = "llrr", 
+     sanitize.text.function = identity)
   
   # GROUPED TABLE ------------------------------------------------
   output$table_grouped <- renderDT({
-    if (length(r$picked_vars) > 0) {
+    req(r$picked_df)
       
-      dat <- r$picked_df %>% 
-        group_by_if(is.factor) %>%
-        summarise(Freq = n(),
-                  Prop = round(Freq/nrow(r$picked_df),2),
-                  across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
-                  .groups = "drop")
-      
-      datatable(dat,
-                style = "auto",
-                rownames = F,
-                selection = "none",
-                options = list(searching = F, paging = F, scrollY = "500", scrollX = T))
-    }
+    dat <- r$picked_df %>% 
+      group_by_if(is.factor) %>%
+      summarise(Freq = n(),
+                Prop = round(Freq/nrow(r$picked_df),2),
+                across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
+                .groups = "drop")
+    
+    datatable(dat,
+              style     = "auto",
+              rownames  = F,
+              selection = "none",
+              options   = list(searching = F, paging = F, scrollY = "500", scrollX = T))
   })
   
   # GROUPED PLOT ------------------------------------------------
   output$plot_grouped <- renderPlot({
-    if(length(r$picked_vars) > 0) {
+    req(r$picked_df)
       
-      dat <- select(r$picked_df, where(is.factor))
-      nm <- colnames(dat)
-      n <- ncol(dat)
-      
-      if(n > 0) {
-        colnames(dat) <- paste0("c",1:n)
-        if (n >= 1) {p <- ggplot(dat, aes(c1)) + geom_bar() + labs(x = nm[1])} 
-        if (n >= 2) {p <- p + geom_bar(aes(fill = c2)) + labs(fill = nm[2])}
-        if (n >= 3) {p <- p + facet_grid(c3 ~ .)}
-        if (n >= 4) {p <- p + facet_grid(c3 ~ c4)}
-        p + guides(x = guide_axis(angle = 25))
-      }
+    dat <- select(r$picked_df, where(is.factor))
+    nm  <- colnames(dat)
+    n   <- ncol(dat)
+    
+    if(n > 0) {
+      colnames(dat)  <- paste0("c",1:n)
+      if (n >= 1) {p <- ggplot(dat, aes(c1)) + geom_bar() + labs(x = nm[1])} 
+      if (n >= 2) {p <- p + geom_bar(aes(fill = c2)) + labs(fill = nm[2])}
+      if (n >= 3) {p <- p + facet_grid(c3 ~ .)}
+      if (n >= 4) {p <- p + facet_grid(c3 ~ c4)}
+      p + guides(x = guide_axis(angle = 25))
     }
-  
   })
   
-  # EXAMINE filters ---------------------------------------------------
+  # PICK EVENT ---------------------------------------------------
   observeEvent(input$table_vars_row_last_clicked, {
-    var <- MDATA_VARS$key[input$table_vars_row_last_clicked]
-    
+    r$picked_vars <- MDATA_VARS$key[input$table_vars_rows_selected]
+    r$picked_df   <- MDATA[r$picked_vars]
+    var           <- MDATA_VARS$key[input$table_vars_row_last_clicked]
+
     # update plot inputs
-    m <- if(length(r$picked_vars) > 1) r$picked_vars[2] else r$picked_vars[1]
+    freezeReactiveValue(input, "plot_x")
+    freezeReactiveValue(input, "plot_y")
+    m <- if (length(r$picked_vars) > 1) r$picked_vars[2] else r$picked_vars[1]
     updateSelectInput(session, "plot_x", choices = r$picked_vars)
-    updateSelectInput(session, "plot_y", choices = r$picked_vars, selected = m)
+    updateSelectInput(session, "plot_y", choices = r$picked_vars, selected = m)  
     
-    # update filter inputs; add/remove last clicked
+    # update filter inputs
     if (var %in% r$picked_vars) {
       lbl <- paste0(var,": ",tolower(MDATA_VARS$lbl[MDATA_VARS$key == var]))
       vec <- r$picked_df[[var]]
@@ -112,8 +100,8 @@ shinyServer(function(input, output, session) {
         elem <- selectInput(var, lbl, choices = levels(vec), multiple = T, selectize = T)
       } else if (is.numeric(vec)) {
         elem <- sliderInput(var, lbl, round = 1, 
-                            min =  min(vec, na.rm = T), 
-                            max = max(vec, na.rm = T), 
+                            min   =   min(vec, na.rm = T), 
+                            max   =   max(vec, na.rm = T), 
                             value = range(vec, na.rm = T))
       }
       insertUI(selector = "#div_filters", 
@@ -121,12 +109,7 @@ shinyServer(function(input, output, session) {
     } else {
       removeUI(selector = paste0("#s_",var))
     }
-  })
-  
-  observeEvent(input$bt_examine, {
-    if (length(r$picked_vars) > 0) {
-      updateNavbarPage(session, "navbar", selected = "tab_examine") 
-    }
+    
   })
   
   observeEvent(input$bt_fapply, {
@@ -160,61 +143,52 @@ shinyServer(function(input, output, session) {
   
   # EXAMINE plot & table ---------------------------------------
   output$plot_examine <- renderPlot({
-    n <- length(r$picked_df)
-    if (n > 0) {
-      
-      m1 <- input$plot_x
-      m2 <- input$plot_y
-      dat <- r$picked_df
-      p <- dat %>% ggplot(aes(x = !!sym(m1)))
-      
-      if (is.factor(dat[[m1]])) {
-        if (n == 1) {p <- p + geom_bar()}
-        if (n >= 2) {
-          if (is.factor(dat[[m2]])) {p <- p + geom_bar(aes(fill = !!sym(m2)), position = input$plot_pos)}
-          else if (is.numeric(dat[[m2]])) {p <- p + geom_boxplot(aes(y = !!sym(m2)))}
-        }
-        p <- p + scale_x_discrete(labels = \(x) stringr::str_wrap(x, width = 20))
-      } else if (is.numeric(dat[[m1]])) {
-        if (n == 1)  {p <- p + geom_density()} # cannot be jitter
-        if (n >= 2 && input$plot_type == "jitter") {p <- p + geom_jitter(aes(y = !!sym(m2)))}
-        if (n >= 2 && input$plot_type == "density") {p <- p + geom_density(aes(fill = !!sym(m2), color = !!sym(m2)), alpha = 1/4)}
+    req(r$picked_df, input$plot_x)
+
+    n   <- length(r$picked_df)
+    m1  <- sym(input$plot_x)
+    m2  <- sym(input$plot_y)
+    dat <- r$picked_df
+    p   <- dat %>% ggplot(aes(x = !!m1))
+    
+    if (is.factor(dat[[m1]])) {
+      if (n == 1) {p <- p + geom_bar()}
+      if (n >= 2) {
+        if (is.factor(dat[[m2]]))       {p <- p + geom_bar(aes(fill = !!m2), position = input$plot_pos)}
+        else if (is.numeric(dat[[m2]])) {p <- p + geom_boxplot(aes(y = !!m2))}
       }
-      p + theme(legend.position = "bottom")
+      p <- p + scale_x_discrete(labels = \(x) stringr::str_wrap(x, width = 20))
+    } else if (is.numeric(dat[[m1]])) {
+      if (n == 1)  {p <- p + geom_density()} # cannot be jitter
+      if (n >= 2 && input$plot_type == "jitter")  {p <- p + geom_jitter(aes(y = !!m2))}
+      if (n >= 2 && input$plot_type == "density") {p <- p + geom_density(aes(fill = !!m2, color = !!m2), alpha = 1/4)}
     }
+    p + theme(legend.position = "bottom")
   })
   
   output$table_examine <- renderTable({
-    if (length(r$picked_vars) > 0) {
-      
-      make_factor <- function(vec) {
-        if (!is.factor(vec)) {
-          quants <- unique(quantile(vec, na.rm = T))
-          vec <- if (length(quants) > 1) cut(vec, quants) else factor(vec)
-        }
-        return(vec)
-      }
-      
-      m1 = input$plot_x
-      m2 = input$plot_y
-      dat <- select(r$picked_df, c(m1, m2))
-      dat <- as.data.frame(lapply(dat, make_factor))
-      if (ncol(dat) == 1) {
-        dat %>% 
-          group_by_all() %>% 
-          summarise(Freq = n(), .groups = "drop") %>% 
-          mutate(`%` = 100*round(Freq/sum(Freq),4))
-      } else {
-        dat %>%
-          group_by_all() %>% 
-          summarise(Freq = n(), .groups = "drop") %>% 
-          group_by(!!sym(m1)) %>%
-          mutate(`%` = 100*round(Freq/sum(Freq),2),
-                 fp = paste0(Freq," (",`%`,"%)")) %>%
-          select(-Freq, -`%`) %>% 
-          tidyr::pivot_wider(names_from = !!sym(m2), values_from = fp)
-      }
+    req(r$picked_df, input$plot_x)
+    
+    m1  <- sym(input$plot_x)
+    m2  <- sym(input$plot_y)
+    dat <- r$picked_df %>% select(!!m1,!!m2)
+    dat <- as.data.frame(lapply(dat, make_factor))
+    
+    if (ncol(dat) == 1) {
+      dat %>% 
+        group_by_all() %>% 
+        summarise(Freq = n(), .groups = "drop") %>% 
+        mutate(`%` = 100*round(Freq/sum(Freq),4))
+    } else {
+      dat %>%
+        group_by_all() %>% 
+        summarise(Freq = n(), .groups = "drop") %>% 
+        group_by(!!m1) %>%
+        mutate(`%` = 100*round(Freq/sum(Freq),2),
+               fp  = paste0(Freq," (",`%`,"%)")) %>%
+        select(-Freq, -`%`) %>% 
+        tidyr::pivot_wider(names_from = !!m2, values_from = fp)
     }
-  }, align = "r", striped = T, hover = T, spacing = "s")
+  }, striped = T, hover = T, spacing = "s", align = "r",)
   
 })
