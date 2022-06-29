@@ -34,7 +34,7 @@ shinyServer(function(input, output, session) {
   
   # QUICK SUMMARY ------------------------------------------------
   output$table_summary <- renderTable({
-    req(r$picked_df)
+    req(r$picked_vars)
     
     r$picked_df %>% 
       df_summary() %>% 
@@ -45,12 +45,12 @@ shinyServer(function(input, output, session) {
   
   # GROUPED TABLE ------------------------------------------------
   output$table_grouped <- renderDT({
-    req(r$picked_df)
+    req(r$picked_vars)
       
     dat <- r$picked_df %>% 
       group_by_if(is.factor) %>%
       summarise(Freq = n(),
-                Prop = round(Freq/nrow(r$picked_df),2),
+                `%`  = round(Freq/nrow(r$picked_df), 2),
                 across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
                 .groups = "drop")
     
@@ -63,7 +63,7 @@ shinyServer(function(input, output, session) {
   
   # GROUPED PLOT ------------------------------------------------
   output$plot_grouped <- renderPlot({
-    req(r$picked_df)
+    req(r$picked_vars)
       
     dat <- select(r$picked_df, where(is.factor))
     nm  <- colnames(dat)
@@ -110,6 +110,9 @@ shinyServer(function(input, output, session) {
       removeUI(selector = paste0("#s_",var))
     }
     
+    # Switch tabs if on Info
+    if (input$mainbox == "Info") showTab("mainbox", target = "CTabs", select = T)
+    
   })
   
   observeEvent(input$bt_fapply, {
@@ -135,15 +138,15 @@ shinyServer(function(input, output, session) {
     for(var in r$picked_vars) {
       vec <- r$picked_df[[var]]
       if (is.factor(vec))
-        updateSelectInput(session,var, selected = character(0))
+        updateSelectInput(session, var, selected = character(0))
       else if (is.numeric(vec))
-        updateSliderInput(session,var, value = range(vec, na.rm = T))
+        updateSliderInput(session, var, value = range(vec, na.rm = T))
     }
   })
   
   # EXAMINE plot & table ---------------------------------------
   output$plot_examine <- renderPlot({
-    req(r$picked_df, input$plot_x)
+    req(r$picked_vars, input$plot_x)
 
     n   <- length(r$picked_df)
     m1  <- sym(input$plot_x)
@@ -167,7 +170,7 @@ shinyServer(function(input, output, session) {
   })
   
   output$table_examine <- renderTable({
-    req(r$picked_df, input$plot_x)
+    req(r$picked_vars, input$plot_x)
     
     m1  <- sym(input$plot_x)
     m2  <- sym(input$plot_y)
@@ -175,20 +178,16 @@ shinyServer(function(input, output, session) {
     dat <- as.data.frame(lapply(dat, make_factor))
     
     if (ncol(dat) == 1) {
-      dat %>% 
-        group_by_all() %>% 
-        summarise(Freq = n(), .groups = "drop") %>% 
-        mutate(`%` = 100*round(Freq/sum(Freq),4))
+      Freq <- table(dat)
+      `%`  <- 100*prop.table(Freq)
+      cbind(Freq, `%`)
     } else {
-      dat %>%
-        group_by_all() %>% 
-        summarise(Freq = n(), .groups = "drop") %>% 
-        group_by(!!m1) %>%
-        mutate(`%` = 100*round(Freq/sum(Freq),2),
-               fp  = paste0(Freq," (",`%`,"%)")) %>%
-        select(-Freq, -`%`) %>% 
-        tidyr::pivot_wider(names_from = !!m2, values_from = fp)
+      f           <- xtabs(~., dat, drop.unused.levels = T, addNA = T)
+      p           <- round(100*prop.table(f, 1), 0)
+      fp          <- paste0(f, " (", p, "%)") 
+      rownames(f) <- tidyr::replace_na(rownames(f), "NA") # fix for xtable 
+      matrix(fp, nrow = nrow(f), ncol = ncol(f), dimnames =  dimnames(f))
     }
-  }, striped = T, hover = T, spacing = "s", align = "r",)
+  }, rownames = T, striped = T, hover = T, spacing = "s", align = "r")
   
 })

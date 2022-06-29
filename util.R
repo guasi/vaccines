@@ -19,7 +19,7 @@ util$df_summary <- function(df) {
     # helper functions
     get_nas <- function(vec) {
       s <- sum(is.na(vec))
-      p <- format(100*round(s/length(vec),3), nsmall = 1)
+      p <- format(100*round(s/length(vec),4), nsmall = 1)
       paste0(s, " (", p, "%)")
     }
     
@@ -33,16 +33,16 @@ util$df_summary <- function(df) {
     if (is.factor(vec) || is.character(vec) || is.logical(vec)) {
       labels <- names(table(vec))
       counts <- table(vec)
-      props  <- format(100*round(prop.table(counts),3), nsmall = 1)
+      props  <- format(100*round(prop.table(counts),4), nsmall = 1)
       
       val    <- paste0(1:length(labels),". ", labels, collapse = "\n")
       stats  <- paste0(paste0(counts, " (",props,"%)"), collapse = "\n")
       
     } else if (is.numeric(vec)) {
-      val    <- paste("range:", min(vec, na.rm = T), "to", max(vec, na.rm = T), "\n",
-                      "mean:",  round(mean(vec, na.rm = T),2), "\n",
-                      "median:",round(median(vec, na.rm = T),2), "\n",
-                      "sd:",    round(sd(vec, na.rm = T),2))
+      val    <- paste0("range: [", min(vec, na.rm = T), ",", max(vec, na.rm = T), "]\n",
+                      "mean: ",  round(mean(vec, na.rm = T),2), "\n",
+                      "median: ",round(median(vec, na.rm = T),2), "\n",
+                      "sd: ",    round(sd(vec, na.rm = T),2))
       
       vec    <- make_factor(vec)
       labels <- names(table(vec))

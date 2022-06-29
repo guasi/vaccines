@@ -1,16 +1,14 @@
-This application allows you to explore raw unweigthed vaccination data from the [2014 Child National Immunization Survey](https://www.cdc.gov/nchs/nis/data_files.htm).
+This application was built **exclusively** as an exercise to learn R and Shiny. It was inspired by a desire to quickly obtain a rough overview of data that contain a large number of variables.
 
-It provides a **rough overview** to help analysts select indicators for further analysis elsewhere.
+Currently you can explore raw unweighted vaccination data from the [2014 Child National Immunization Survey](https://www.cdc.gov/nchs/nis/data_files.htm). In the future you will be able to upload your own dataset.
 
 **User Guide**
 
-- To select an idicator, click on its row on the table.
-- Click on "Ctabs" to view cross-tabulation tables and plots
+- To select an indicator, click on its row on the table.
+- Click on "Ctabs" to view contingency tables and plots
 - Click on "Summary" to view summary stats
-- Click on "XTable" to view grouped stats
+- Click on "XTable" to view stats on grouped variables
 - Click on "4Plot" to view grouped plot on first 4 discrete variables
-
-This application was built **exclusively** as an exercise to learn R and Shiny without any communication with those formally studying the immunization survey data.
 
 ----
 

@@ -24,7 +24,7 @@ filter_controls <-
 # main page
 main_content <- 
   fluidRow(
-    tabBox(width = 8,
+    tabBox(width = 8, id = "mainbox",
            tabPanel("Info",
                     includeMarkdown("include/info.md")),
            tabPanel("CTabs",
