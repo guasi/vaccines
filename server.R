@@ -1,7 +1,6 @@
 shinyServer(function(input, output, session) {
   
   # GLOBAL & REACTIVE VARS -----------------------------------
-  
   r <- reactiveValues(
     picked_vars = NULL,
     picked_df   = NULL,
@@ -23,6 +22,7 @@ shinyServer(function(input, output, session) {
     
     for(var in r$picked_vars) {
       removeUI(selector = paste0("#s_",var))
+      removeUI(selector = paste0("#p_",var))
     }
     updateSelectInput(session, "plot_x", choices = character(0))
     updateSelectInput(session, "plot_y", choices = character(0))
@@ -32,54 +32,7 @@ shinyServer(function(input, output, session) {
     
   })
   
-  # QUICK SUMMARY ------------------------------------------------
-  output$table_summary <- renderTable({
-    req(r$picked_vars)
-    
-    r$picked_df %>% 
-      df_summary() %>% 
-      mutate_all(linebreak_html)
-    
-  }, striped = T, hover = T, spacing = "s", align  = "llrr", 
-     sanitize.text.function = identity)
-  
-  # GROUPED TABLE ------------------------------------------------
-  output$table_grouped <- renderDT({
-    req(r$picked_vars)
-      
-    dat <- r$picked_df %>% 
-      group_by_if(is.factor) %>%
-      summarise(Freq = n(),
-                `%`  = round(Freq/nrow(r$picked_df), 2),
-                across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
-                .groups = "drop")
-    
-    datatable(dat,
-              style     = "auto",
-              rownames  = F,
-              selection = "none",
-              options   = list(searching = F, paging = F, scrollY = "500", scrollX = T))
-  })
-  
-  # GROUPED PLOT ------------------------------------------------
-  output$plot_grouped <- renderPlot({
-    req(r$picked_vars)
-      
-    dat <- select(r$picked_df, where(is.factor))
-    nm  <- colnames(dat)
-    n   <- ncol(dat)
-    
-    if(n > 0) {
-      colnames(dat)  <- paste0("c",1:n)
-      if (n >= 1) {p <- ggplot(dat, aes(c1)) + geom_bar() + labs(x = nm[1])} 
-      if (n >= 2) {p <- p + geom_bar(aes(fill = c2)) + labs(fill = nm[2])}
-      if (n >= 3) {p <- p + facet_grid(c3 ~ .)}
-      if (n >= 4) {p <- p + facet_grid(c3 ~ c4)}
-      p + guides(x = guide_axis(angle = 25))
-    }
-  })
-  
-  # PICK EVENT ---------------------------------------------------
+  # SELECT EVENT ---------------------------------------------------
   observeEvent(input$table_vars_row_last_clicked, {
     r$picked_vars <- MDATA_VARS$key[input$table_vars_rows_selected]
     r$picked_df   <- MDATA[r$picked_vars]
@@ -92,22 +45,36 @@ shinyServer(function(input, output, session) {
     updateSelectInput(session, "plot_x", choices = r$picked_vars)
     updateSelectInput(session, "plot_y", choices = r$picked_vars, selected = m)  
     
-    # update filter inputs
+    # update filter inputs and mini plots
     if (var %in% r$picked_vars) {
       lbl <- paste0(var,": ",tolower(MDATA_VARS$lbl[MDATA_VARS$key == var]))
       vec <- r$picked_df[[var]]
+      
       if (is.factor(vec)) {
-        elem <- selectInput(var, lbl, choices = levels(vec), multiple = T, selectize = T)
+        plot(vec, main = var, las = 3, cex.axis = .6, cex.names = .6, mgp = c(1.5,.5,0))
+        elem <- selectInput(var, lbl, 
+                            choices   = levels(vec), 
+                            multiple  = T, 
+                            selectize = T)
+        
       } else if (is.numeric(vec)) {
-        elem <- sliderInput(var, lbl, round = 1, 
-                            min   =   min(vec, na.rm = T), 
-                            max   =   max(vec, na.rm = T), 
+        hist(vec, main = var, las = 3, cex.axis = .6, cex.lab = .6, xlab = NULL, mgp = c(1.5,.5,0))
+        elem <- sliderInput(var, lbl, 
+                            round = 1, 
+                            min   = min(vec, na.rm = T), 
+                            max   = max(vec, na.rm = T), 
                             value = range(vec, na.rm = T))
       }
+      pimg <- recordPlot()
+      plt  <- renderPlot(pimg, width = 170, height = 200)
+      
+      insertUI(selector = "#div_miniplots",
+               ui       = div(id = paste0("p_",var), plt))
       insertUI(selector = "#div_filters", 
-               ui = span(id = paste0("s_",var), elem))
+               ui       = div(id = paste0("s_",var), elem))
     } else {
       removeUI(selector = paste0("#s_",var))
+      removeUI(selector = paste0("#p_",var))
     }
     
     # Switch tabs if on Info
@@ -144,7 +111,37 @@ shinyServer(function(input, output, session) {
     }
   })
   
-  # EXAMINE plot & table ---------------------------------------
+  # TAB SUMMARY ------------------------------------------------
+  output$table_summary <- renderTable({
+    req(r$picked_vars)
+    
+    r$picked_df %>% 
+      df_summary() %>% 
+      mutate_all(linebreak_html)
+    
+  }, striped = T, hover = T, spacing = "s", align  = "llrr", 
+  sanitize.text.function = identity)
+  
+  # TAB FACETS -------------------------------------------------
+  output$plot_grouped <- renderPlot({
+    req(r$picked_vars)
+    
+    dat <- select(r$picked_df, where(is.factor))
+    nm  <- colnames(dat)
+    n   <- ncol(dat)
+    
+    if(n > 0) {
+      colnames(dat)  <- paste0("c",1:n)
+      if (n >= 1) {p <- ggplot(dat, aes(c1)) + geom_bar() + labs(x = nm[1])} 
+      if (n >= 2) {p <- p + geom_bar(aes(fill = c2)) + labs(fill = nm[2])}
+      if (n >= 3) {p <- p + facet_grid(c3 ~ .)}
+      if (n >= 4) {p <- p + facet_grid(c3 ~ c4)}
+      p + guides(x = guide_axis(angle = 25))
+    }
+    
+  })
+  
+  # TAB CONTINGENCY -------------------------------------------------
   output$plot_examine <- renderPlot({
     req(r$picked_vars, input$plot_x)
 

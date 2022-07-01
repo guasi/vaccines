@@ -25,15 +25,14 @@ filter_controls <-
 main_content <- 
   fluidRow(
     tabBox(width = 8, id = "mainbox",
-           tabPanel("Info",
-                    includeMarkdown("include/info.md")),
+           tabPanel("Info", includeMarkdown("include/info.md")),
            tabPanel("CTabs",
                     plotOutput("plot_examine"),
                     hr(),
                     tableOutput("table_examine")),
            tabPanel("Summary", tableOutput("table_summary")),
-           tabPanel("XTable", DTOutput("table_grouped")),
-           tabPanel("4Plot", plotOutput("plot_grouped"))
+           tabPanel("Plots", div(id = "div_miniplots")),
+           tabPanel("4Facets", plotOutput("plot_grouped"))
     ),
     box(width = 4,
         actionButton("bt_clear","reset", icon = icon("trash"),

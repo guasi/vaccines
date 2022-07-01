@@ -6,9 +6,9 @@ Currently you can explore raw unweighted vaccination data from the [2014 Child N
 
 - To select an indicator, click on its row on the table.
 - Click on "Ctabs" to view contingency tables and plots
-- Click on "Summary" to view summary stats
-- Click on "XTable" to view stats on grouped variables
-- Click on "4Plot" to view grouped plot on first 4 discrete variables
+- Click on "Summary" to view summary statistics
+- Click on "Plots" to view individual mini plots
+- Click on "4Facets" to view grouped plot on first 4 discrete variables
 
 ----
 

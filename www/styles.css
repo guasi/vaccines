@@ -15,3 +15,8 @@ table.dataTable.display tbody tr.even.selected td{
   margin: 0 auto;
   width: auto;
 }
+
+#div_miniplots {
+  display: flex;
+  flex-wrap: wrap;
+}
