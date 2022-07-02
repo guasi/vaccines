@@ -51,22 +51,33 @@ shinyServer(function(input, output, session) {
       vec <- r$picked_df[[var]]
       
       if (is.factor(vec)) {
-        plot(vec, main = var, las = 3, cex.axis = .6, cex.names = .6, mgp = c(1.5,.5,0))
+        plt  <- renderPlot(plot(vec, 
+                                main = var, 
+                                las = 3, 
+                                cex.axis = .6, 
+                                cex.names = .6, 
+                                mgp = c(1.5,.5,0)),
+                           width = 170, height = 200)
         elem <- selectInput(var, lbl, 
                             choices   = levels(vec), 
                             multiple  = T, 
                             selectize = T)
         
       } else if (is.numeric(vec)) {
-        hist(vec, main = var, las = 3, cex.axis = .6, cex.lab = .6, xlab = NULL, mgp = c(1.5,.5,0))
+        plt  <- renderPlot(hist(vec, 
+                                main = var, 
+                                las = 3, 
+                                cex.axis = .6, 
+                                cex.lab = .6, 
+                                xlab = NULL, 
+                                mgp = c(1.5,.5,0)), 
+                           width = 170, height = 200)
         elem <- sliderInput(var, lbl, 
                             round = 1, 
                             min   = min(vec, na.rm = T), 
                             max   = max(vec, na.rm = T), 
                             value = range(vec, na.rm = T))
       }
-      pimg <- recordPlot()
-      plt  <- renderPlot(pimg, width = 170, height = 200)
       
       insertUI(selector = "#div_miniplots",
                ui       = div(id = paste0("p_",var), plt))
