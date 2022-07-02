@@ -52,11 +52,11 @@ shinyServer(function(input, output, session) {
       
       if (is.factor(vec)) {
         plt  <- renderPlot(plot(vec, 
-                                main = var, 
-                                las = 3, 
-                                cex.axis = .6, 
+                                main      = var, 
+                                las       = 3, 
+                                cex.axis  = .6, 
                                 cex.names = .6, 
-                                mgp = c(1.5,.5,0)),
+                                mgp       = c(1.5,.5,0)),
                            width = 170, height = 200)
         elem <- selectInput(var, lbl, 
                             choices   = levels(vec), 
@@ -65,12 +65,12 @@ shinyServer(function(input, output, session) {
         
       } else if (is.numeric(vec)) {
         plt  <- renderPlot(hist(vec, 
-                                main = var, 
-                                las = 3, 
+                                main     = var, 
+                                las      = 3, 
                                 cex.axis = .6, 
-                                cex.lab = .6, 
-                                xlab = NULL, 
-                                mgp = c(1.5,.5,0)), 
+                                cex.lab  = .6, 
+                                xlab     = NULL, 
+                                mgp      = c(1.5,.5,0)), 
                            width = 170, height = 200)
         elem <- sliderInput(var, lbl, 
                             round = 1, 
